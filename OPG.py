@@ -19,7 +19,7 @@ class Rule:
     @classmethod
     def find(cls, rule):
         try:
-            id = cls.rules.idex(rule)
+            id = cls.rules.index(rule)
             return id
         except:
             return -1
@@ -56,6 +56,7 @@ class Rule:
         Ut.get_first_vt()
         Ut.get_last_vt()
         cls.get_matrix()
+        Vt.get_neighbor_ut()
         for i in range(Vt.cnt):
             cls.matrix[i][Vt.cnt] = '>'
             cls.matrix[Vt.cnt][i] = '<'
@@ -91,6 +92,43 @@ class Rule:
                     for vsym in U['lastvt']:
                         v2 = Vt.get(vsym)
                         cls.matrix[v2['id']][v1['id']] = '>'
+
+    @classmethod
+    def compare(cls, vt1, vt2):
+        vt1 = Vt.get(vt1)
+        vt2 = Vt.get(vt2)
+        return cls.matrix[vt1['id']][vt2['id']]
+
+    @classmethod
+    def analyze(cls, src):
+        procedure = []
+        src = src + '#'
+        piv = 0
+        symstk = '#'
+        genstk = []
+
+        while piv < len(src):
+            cmp = cls.compare(symstk[-1], src[piv])
+            if cmp == '<':
+                genstk.append(len(symstk))
+                symstk += src[piv]
+                piv += 1
+            elif cmp == '>':
+                while len(genstk) > 0:
+                    genstart = genstk[-1]
+                    gen = symstk[genstart:]
+                    vt1 = Vt.get(symstk[genstart-1])
+                    vt2 = Vt.get(src[piv])
+                    if cls.compare(vt1, vt2) == '<':
+                        if
+                    elif cls.compare(vt1, vt2) == '>':
+                    else:
+                        break
+                    # break when this generalization fails
+            else:
+                print('error')
+                break
+        return procedure
 
 
 class Ut:
@@ -206,13 +244,34 @@ class Vt:
     def get(cls, symbol):
         return cls.symbols[symbol]
 
+    @classmethod
+    def get_neighbor_ut(cls):
+        for rule in Rule.rules:
+            left, right = rule
+            l = len(right)
+            for i in range(l):
+                if right[i] in Vt.symbols:
+                    if i > 0:
+                        if right[i-1] in Ut.symbols:
+                            Vt.symbols[right[i]]['prevut'] = right[i-1]
+                    if i < l-1:
+                        if right[i+1] in Ut.symbols:
+                            Vt.symbols[right[i]]['nextut'] = right[i+1]
+
+
 if __name__ == '__main__':
     Rule.add(('E', 'E+T | T'))
     Rule.add(('T', 'T*F | F'))
     Rule.add(('F', '(E) | i'))
+
     #Rule.add(('F', '(I) | I'))
     #Rule.add(('I', '1|2|3|4|5|6|7|8|9|0'))
     Rule.parse()
-    print(list(Vt.symbols.keys()))
-    for role in Rule.matrix:
-        print(role)
+
+    print('   ', end='')
+    for i in range(Vt.cnt):
+        print(' {0}  '.format(Vt.ids[i]), end=' ')
+    print()
+    for i in range(Vt.cnt):
+        print(Vt.ids[i], end=' ')
+        print(Rule.matrix[i])
