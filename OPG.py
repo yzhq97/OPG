@@ -4,17 +4,20 @@ alphabet = "QWERTYUIOPASDFGHJKLZXCVBNM"
 class Rule:
     rules = []
     matrix = []
+    starter = ''
     cnt = 0
 
     @classmethod
-    def clear(cls):
+    def init(cls, starter):
         cls.rules = []
         cls.matrix = []
         cls.cnt = 0
+        cls.starter = starter
         Ut.symbols = {}
         Ut.cnt = 0
         Vt.symbols = {}
         Vt.cnt = 0
+        cls.add(('Z', '#'+starter+'#'))
 
     @classmethod
     def find(cls, rule):
@@ -57,15 +60,10 @@ class Rule:
         Ut.get_last_vt()
         cls.get_matrix()
         Vt.get_neighbor_ut()
-        for i in range(Vt.cnt):
-            cls.matrix[i][Vt.cnt] = '>'
-            cls.matrix[Vt.cnt][i] = '<'
-        cls.matrix[Vt.cnt][Vt.cnt] = '='
-        Vt.add('#')
 
     @classmethod
     def get_matrix(cls):
-        cls.matrix = [[' ' for i in range(Vt.cnt+1)] for j in range(Vt.cnt+1)]
+        cls.matrix = [[' ' for i in range(Vt.cnt)] for j in range(Vt.cnt)]
         for rule in cls.rules:
             left, x = rule
             for i in range(len(x)-1):
@@ -107,27 +105,59 @@ class Rule:
         symstk = '#'
         genstk = []
 
-        while piv < len(src):
+        while True:
             cmp = cls.compare(symstk[-1], src[piv])
+            procedure.append((symstk, cmp, src[piv], src[piv + 1:]))
             if cmp == '<':
                 genstk.append(len(symstk))
                 symstk += src[piv]
                 piv += 1
+
             elif cmp == '>':
+                generalized = False
                 while len(genstk) > 0:
                     genstart = genstk[-1]
                     gen = symstk[genstart:]
                     vt1 = Vt.get(symstk[genstart-1])
                     vt2 = Vt.get(src[piv])
-                    if cls.compare(vt1, vt2) == '<':
-                        if
-                    elif cls.compare(vt1, vt2) == '>':
-                    else:
+                    found = False
+                    if cls.compare(vt1['symbol'], vt2['symbol']) == '<':
+                        if 'prevut' in vt2:
+                            for rule in Rule.rules:
+                                left, right = rule
+                                if right == gen:
+                                    found = True
+                                    symstk = symstk[:genstart] + left
+                                    procedure.append((symstk, cmp, vt2['symbol'], src[piv+1:]))
+                                    if left == vt2['prevut']:
+                                        generalized = True
+                                    break
+                    elif cls.compare(vt1['symbol'], vt2['symbol']) in '>=':
+                        if 'nextut' in vt1:
+                            for rule in Rule.rules:
+                                left, right = rule
+                                if right == gen:
+                                    found = True
+                                    symstk = symstk[:genstart] + left
+                                    procedure.append((symstk, cmp, vt2['symbol'], src[piv+1:]))
+                                    if left == vt1['nextut']:
+                                        genstk.pop()
+                                    break
+
+                    if generalized or not found:
+                        if piv+1 < len(src):
+                            symstk += src[piv]
+                            piv += 1
                         break
-                    # break when this generalization fails
             else:
                 print('error')
+                procedure.append((symstk, 'error', vt2['symbol'], src[piv+1:]))
+                return procedure;
+
+            if src[piv]=='#' and symstk[-1]==cls.starter:
+                procedure.append((symstk + src[piv], '', '', ''))
                 break
+
         return procedure
 
 
@@ -260,12 +290,10 @@ class Vt:
 
 
 if __name__ == '__main__':
-    Rule.add(('E', 'E+T | T'))
-    Rule.add(('T', 'T*F | F'))
+    Rule.init('E')
+    Rule.add(('E', 'E+T | E-T | T'))
+    Rule.add(('T', 'T*F | T/F | F'))
     Rule.add(('F', '(E) | i'))
-
-    #Rule.add(('F', '(I) | I'))
-    #Rule.add(('I', '1|2|3|4|5|6|7|8|9|0'))
     Rule.parse()
 
     print('   ', end='')
@@ -275,3 +303,12 @@ if __name__ == '__main__':
     for i in range(Vt.cnt):
         print(Vt.ids[i], end=' ')
         print(Rule.matrix[i])
+
+    print()
+
+    s = '(i*i)'
+    print(s)
+    procedure = Rule.analyze(s)
+
+    for role in procedure:
+        print(role)
