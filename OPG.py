@@ -1,4 +1,4 @@
-alphabet = "QWERTYUIOPASDFGHJKLZXCVBNM"
+alphabet = "ZQWERTYUIOPASDFGHJKLXCVBNM"
 
 
 class Rule:
@@ -107,7 +107,7 @@ class Rule:
 
         while True:
             cmp = cls.compare(symstk[-1], src[piv])
-            procedure.append((symstk, cmp, src[piv], src[piv + 1:]))
+            procedure.append((symstk, cmp, src[piv], src[piv + 1:], 'move in'))
             if cmp == '<':
                 genstk.append(len(symstk))
                 symstk += src[piv]
@@ -128,7 +128,7 @@ class Rule:
                                 if right == gen:
                                     found = True
                                     symstk = symstk[:genstart] + left
-                                    procedure.append((symstk, cmp, vt2['symbol'], src[piv+1:]))
+                                    procedure.append((symstk, cmp, vt2['symbol'], src[piv+1:], 'generalize'))
                                     if left == vt2['prevut']:
                                         generalized = True
                                     break
@@ -139,7 +139,7 @@ class Rule:
                                 if right == gen:
                                     found = True
                                     symstk = symstk[:genstart] + left
-                                    procedure.append((symstk, cmp, vt2['symbol'], src[piv+1:]))
+                                    procedure.append((symstk, cmp, vt2['symbol'], src[piv+1:], 'generalize'))
                                     if left == vt1['nextut']:
                                         genstk.pop()
                                     break
@@ -151,11 +151,11 @@ class Rule:
                         break
             else:
                 print('error')
-                procedure.append((symstk, 'error', vt2['symbol'], src[piv+1:]))
+                procedure.append((symstk, 'err', vt2['symbol'], src[piv+1:], 'error'))
                 return procedure;
 
             if src[piv]=='#' and symstk[-1]==cls.starter:
-                procedure.append((symstk + src[piv], '', '', ''))
+                procedure.append((symstk + src[piv], '', '', '', 'finish'))
                 break
 
         return procedure
@@ -288,27 +288,61 @@ class Vt:
                         if right[i+1] in Ut.symbols:
                             Vt.symbols[right[i]]['nextut'] = right[i+1]
 
-
 if __name__ == '__main__':
-    Rule.init('E')
-    Rule.add(('E', 'E+T | E-T | T'))
-    Rule.add(('T', 'T*F | T/F | F'))
-    Rule.add(('F', '(E) | i'))
+    print('请输入开始符号，开始符号是规约的最终目标，必须出现在后面的语法中')
+    starter = input()
+    Rule.init(starter)
+    print()
+
+    print('请输入产生式，一行输入一条产生式')
+    print('大写字母为非终结符,Z不能使用,其他为终结符')
+    print('产生式用->分隔，输入一个#表示结束')
+    while True:
+        rule_str = input()
+        if rule_str == '#':
+            break
+        sep = rule_str.index('->')
+        left = rule_str[:sep]
+        right = rule_str[sep+2:]
+        rule = (left, right)
+        Rule.add(rule)
+    print()
+
     Rule.parse()
 
-    print('   ', end='')
+    print('非终结符:')
+    for key in Ut.symbols:
+        if not key=='Z':
+            U = Ut.symbols[key]
+            print('{0}'.format(key))
+            print('firstvt: {0}'.format(' '.join(U['firstvt'])))
+            print('lastvt: {0}'.format(' '.join(U['lastvt'])))
+            print()
+    print()
+
+    print('终结符优先矩阵:')
+    print('  ', end='')
     for i in range(Vt.cnt):
-        print(' {0}  '.format(Vt.ids[i]), end=' ')
+        print(' {0}'.format(Vt.ids[i]), end=' ')
     print()
     for i in range(Vt.cnt):
         print(Vt.ids[i], end=' ')
-        print(Rule.matrix[i])
-
+        for j in range(Vt.cnt):
+            print(' {0} '.format(Rule.matrix[i][j]), end='')
+        print()
     print()
 
-    s = '(i*i)'
-    print(s)
-    procedure = Rule.analyze(s)
+    while True:
+        print('请输入要分析的符号串，输入一个#表示退出')
+        str = input()
+        if str == '#':
+            break
+        procedure = Rule.analyze(str)
+        fmt = '| {0:15s} | {1:3s} | {2:2s} | {3:15s} | {4:10s} |'
+        print(fmt.format('stack', 'cmp', 'nx', 'remaining', 'operation'))
+        for role in procedure:
+            print(fmt.format(role[0], role[1], role[2], role[3], role[4]), end='')
+            print()
+        print()
 
-    for role in procedure:
-        print(role)
+
